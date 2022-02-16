@@ -1,5 +1,7 @@
-import numpy as np
 import math
+import numpy as np
+from scipy.stats import norm
+
 
 def buildTree(S, vol, T, N):
     dt = T/N
@@ -40,15 +42,26 @@ def valueOptionMatrix(tree, T, r ,K, vol) :
     
     return tree
 
-sigma = 0.2
+
+def black_scholes_formula(S, sigma, tau, r, K):
+
+    d1 = (math.log(S / K) + (r + 0.5 * math.pow(sigma, 2)) * tau ) / (sigma * math.sqrt(tau))
+    d2 = d1 - sigma * math.sqrt(tau)
+
+    return S * norm.cdf(d1) - math.exp(-r * tau) * K * norm.cdf(d2)
+
 S = 100
 T = 1
-N = 50
+N = 1000
 
 K = 99
 r = 0.06
 
-tree = buildTree(S,sigma,T,N)
+for sigma in np.arange(0.1, 1, .1):
 
-matrix = valueOptionMatrix(tree, T, r, K, sigma)
-print(matrix[0][0])
+    tree = buildTree(S,sigma,T,N)
+
+    matrix = valueOptionMatrix(tree, T, r, K, sigma)
+
+    black_scholes_value = black_scholes_formula(S, sigma, T, r, K)
+    print(f"sigma = {sigma:.2f}: {matrix[0][0]} vs {black_scholes_value}")
