@@ -30,7 +30,7 @@ def valueOptionMatrix(tree, T, r ,K, vol) :
     # Add the payoff function in the last row
     for c in np.arange(columns):
         S = tree[rows - 1, c] # value in the matrix
-        tree[rows - 1, c] = 0 if S > K else tree[0][0] - S
+        tree[rows - 1, c] = max(S - K, 0)
     
     # For all other rows, we need to combine from previous rows
     # We walk backwards, from the last row to the first row
