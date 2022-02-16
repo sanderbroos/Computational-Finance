@@ -40,16 +40,15 @@ def valueOptionMatrix(tree, T, r ,K, vol) :
     
     return tree
 
-sigma = 0.4
-S = 50
-T = 0.4167
-N = 5
+sigma = 0.2
+S = 100
+T = 1
+N = 50
 
-K = 52
-r = 0.1
+K = 99
+r = 0.06
 
 tree = buildTree(S,sigma,T,N)
-print(tree)
 
 matrix = valueOptionMatrix(tree, T, r, K, sigma)
-print(matrix)
+print(matrix[0][0])
