@@ -34,7 +34,11 @@ def valueOptionMatrix(matrix, T, r ,K, vol):
     # Add the payoff function in the last row
     for c in np.arange(columns):
         S = tree[rows - 1, c] # value in the matrix
-        tree[rows - 1, c] = max(S - K, 0)
+
+        if option_type == "put":
+            tree[rows - 1, c] = max(K - S, 0)
+        else:
+            tree[rows - 1, c] = max(S - K, 0)
     
     # For all other rows, we need to combine from previous rows
     # We walk backwards, from the last row to the first row
@@ -42,8 +46,19 @@ def valueOptionMatrix(matrix, T, r ,K, vol):
         for j in np.arange(i + 1):
             down = tree[i + 1, j]
             up = tree[i + 1, j + 1]
-            tree[i, j] = math.exp(-r*dt) * (p * up + (1 - p) * down)
-    
+
+            if pricing == "european":
+                tree[i, j] = math.exp(-r*dt) * (p * up + (1 - p) * down)
+            else:
+
+                S = matrix[i, j]
+
+                if option_type == "put":
+
+                    tree[i, j] = max(math.exp(-r*dt) * (p * up + (1 - p) * down), max(K - S, 0))
+                else:
+                    tree[i, j] = max(math.exp(-r*dt) * (p * up + (1 - p) * down), max(S - K, 0))
+
     return tree
 
 
@@ -62,10 +77,11 @@ def calc_delta(stock_tree, option_tree):
     s0 = stock_tree[0][0]
     return (fu - fd) / (s0 * u - s0 * d)
 
-
+option_type = "put"
+pricing = "european"
 S = 100
 T = 1
-N = 1000
+N = 50
 
 K = 99
 r = 0.06
@@ -73,11 +89,10 @@ r = 0.06
 for sigma in np.arange(0.1, 1.1, .1):
 
     stock_tree = buildTree(S,sigma,T,N)
-    
     option_tree = valueOptionMatrix(stock_tree, T, r, K, sigma)
 
     black_scholes_value = black_scholes_formula(S, sigma, T, r, K)
-    
+
     delta = calc_delta(stock_tree, option_tree)
-    
+
     print(f"sigma = {sigma:.2f}: {option_tree[0][0]}, {delta} vs {black_scholes_value}")
