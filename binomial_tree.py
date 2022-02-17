@@ -18,7 +18,11 @@ def buildTree(S, vol, T, N):
 
     return matrix
 
-def valueOptionMatrix(tree, T, r ,K, vol) :
+def valueOptionMatrix(matrix, T, r ,K, vol):
+    
+    global u, d
+    tree = matrix.copy()
+
     dt = T / N
     u = math.exp(vol*math.sqrt(dt))
     d = math.exp(-vol*math.sqrt(dt))
@@ -48,7 +52,16 @@ def black_scholes_formula(S, sigma, tau, r, K):
     d1 = (math.log(S / K) + (r + 0.5 * math.pow(sigma, 2)) * tau ) / (sigma * math.sqrt(tau))
     d2 = d1 - sigma * math.sqrt(tau)
 
-    return S * norm.cdf(d1) - math.exp(-r * tau) * K * norm.cdf(d2)
+    return S * norm.cdf(d1) - math.exp(-r * tau) * K * norm.cdf(d2), norm.cdf(d1)
+
+def calc_delta(stock_tree, option_tree):
+
+    fu = option_tree[1][1]
+    fd = option_tree[1][0]
+
+    s0 = stock_tree[0][0]
+    return (fu - fd) / (s0 * u - s0 * d)
+
 
 S = 100
 T = 1
@@ -57,11 +70,14 @@ N = 1000
 K = 99
 r = 0.06
 
-for sigma in np.arange(0.1, 1, .1):
+for sigma in np.arange(0.1, 1.1, .1):
 
-    tree = buildTree(S,sigma,T,N)
-
-    matrix = valueOptionMatrix(tree, T, r, K, sigma)
+    stock_tree = buildTree(S,sigma,T,N)
+    
+    option_tree = valueOptionMatrix(stock_tree, T, r, K, sigma)
 
     black_scholes_value = black_scholes_formula(S, sigma, T, r, K)
-    print(f"sigma = {sigma:.2f}: {matrix[0][0]} vs {black_scholes_value}")
+    
+    delta = calc_delta(stock_tree, option_tree)
+    
+    print(f"sigma = {sigma:.2f}: {option_tree[0][0]}, {delta} vs {black_scholes_value}")
