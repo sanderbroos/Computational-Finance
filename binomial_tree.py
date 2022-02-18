@@ -2,97 +2,96 @@ import math
 import numpy as np
 from scipy.stats import norm
 
+class BinomialTree:
+    def __init__(self, S, vol, T, N, r, K, option_type="call", pricing_type="eu"):
+        self.S = S
+        self.vol = vol
+        self.T = T
+        self.N = N
+        self.r = r
+        self.K = K
 
-def buildTree(S, vol, T, N):
-    dt = T/N
-    matrix = np.zeros((N+1, N+1))
-    u = math.exp(vol*math.sqrt(dt))
-    d = math.exp(-vol*math.sqrt(dt))
-    #Iterateoverthelowertriangle
+        self.dt = self.T/self.N
+        self.u = math.exp(self.vol*math.sqrt(self.dt))
+        self.d = math.exp(-self.vol*math.sqrt(self.dt))
+        self.p = (math.exp(self.r*self.dt) - self.d) / (self.u - self.d)
 
-    for i in np.arange(N+1): # iterate over rows
-        for j in np.arange(i+1): # iterate over columns
+        self.stock_tree = np.zeros((self.N+1, self.N+1))
+        self.option_tree = np.zeros((self.N+1, self.N+1))
 
-            #Hint:express each cell as acombination of up and down moves
-            matrix[i,j] = S * u ** j * d ** (i - j)
+        self.option_type = option_type
+        self.pricing_type = pricing_type
 
-    return matrix
+    def payoff(self, i, j):
+        S = self.stock_tree[i, j] # value in the matrix
 
-def valueOptionMatrix(matrix, T, r ,K, vol):
-    
-    global u, d
-    tree = matrix.copy()
-
-    dt = T / N
-    u = math.exp(vol*math.sqrt(dt))
-    d = math.exp(-vol*math.sqrt(dt))
-    p = (math.exp(r*dt) - d) / (u - d)
-
-    columns = tree.shape[1]
-    rows = tree.shape[0]
-    # Walk backward , we start in last row of the matrix
-    # Add the payoff function in the last row
-    for c in np.arange(columns):
-        S = tree[rows - 1, c] # value in the matrix
-
-        if option_type == "put":
-            tree[rows - 1, c] = max(K - S, 0)
+        if self.option_type == "put":
+            return max(self.K - S, 0)
         else:
-            tree[rows - 1, c] = max(S - K, 0)
-    
-    # For all other rows, we need to combine from previous rows
-    # We walk backwards, from the last row to the first row
-    for i in np.arange(rows - 1)[::-1]:
-        for j in np.arange(i + 1):
-            down = tree[i + 1, j]
-            up = tree[i + 1, j + 1]
+            return max(S - self.K, 0)
 
-            if pricing == "european":
-                tree[i, j] = math.exp(-r*dt) * (p * up + (1 - p) * down)
-            else:
+    def option_value(self, i, j):
+        down = self.option_tree[i + 1, j]
+        up = self.option_tree[i + 1, j + 1]
 
-                S = matrix[i, j]
+        if self.pricing_type == "eu":
+            return math.exp(-self.r * self.dt) * (self.p * up + (1 - self.p) * down)
+        else:
+            return max(math.exp(-self.r * self.dt) * (self.p * up + (1 - self.p) * down), self.payoff(i, j))
 
-                if option_type == "put":
+    def build_stock_tree(self):
+        # iterate over the lower triangle
+        for i in np.arange(self.N + 1): # iterate over rows
+            for j in np.arange(i + 1): # iterate over columns
+                self.stock_tree[i, j] = self.S * self.u ** j * self.d ** (i - j)
 
-                    tree[i, j] = max(math.exp(-r*dt) * (p * up + (1 - p) * down), max(K - S, 0))
-                else:
-                    tree[i, j] = max(math.exp(-r*dt) * (p * up + (1 - p) * down), max(S - K, 0))
+        return self.stock_tree
 
-    return tree
+    def build_option_tree(self):
+        columns = self.option_tree.shape[1]
+        rows = self.option_tree.shape[0]
 
+        # walk backward, we start in last row of the matrix
+        # add the payoff function in the last row
+        for c in np.arange(columns):
+            self.option_tree[rows - 1, c] = self.payoff(rows - 1, c)
+        
+        # for all other rows, we need to combine from previous rows
+        # we walk backwards, from the last row to the first row
+        for i in np.arange(rows - 1)[::-1]:
+            for j in np.arange(i + 1):
+                self.option_tree[i, j] = self.option_value(i, j)
+        
+        return self.option_tree
 
-def black_scholes_formula(S, sigma, tau, r, K):
+    def black_scholes_formula(self, tau=None):
+        if tau == None:
+            tau = self.T
+            
+        d1 = (math.log(self.S / self.K) + (self.r + 0.5 * math.pow(self.vol, 2)) * tau) / (self.vol * math.sqrt(tau))
+        d2 = d1 - self.vol * math.sqrt(tau)
 
-    d1 = (math.log(S / K) + (r + 0.5 * math.pow(sigma, 2)) * tau ) / (sigma * math.sqrt(tau))
-    d2 = d1 - sigma * math.sqrt(tau)
+        return self.S * norm.cdf(d1) - math.exp(-self.r * tau) * self.K * norm.cdf(d2), norm.cdf(d1)
 
-    return S * norm.cdf(d1) - math.exp(-r * tau) * K * norm.cdf(d2), norm.cdf(d1)
+    def calc_delta(self):
+        fu = self.option_tree[1][1]
+        fd = self.option_tree[1][0]
+        s0 = self.stock_tree[0][0]
 
-def calc_delta(stock_tree, option_tree):
+        return (fu - fd) / (s0 * self.u - s0 * self.d)
 
-    fu = option_tree[1][1]
-    fd = option_tree[1][0]
-
-    s0 = stock_tree[0][0]
-    return (fu - fd) / (s0 * u - s0 * d)
-
-option_type = "put"
-pricing = "european"
-S = 100
-T = 1
-N = 50
-
-K = 99
-r = 0.06
-
+print("                   Tree vs Black-Scholes  |         Tree vs Black-Scholes")
 for sigma in np.arange(0.1, 1.1, .1):
+    binomial_tree = BinomialTree(S   = 100, 
+                                 vol = sigma, 
+                                 T   = 1, 
+                                 N   = 50, 
+                                 r   = 0.06, 
+                                 K   = 99)
 
-    stock_tree = buildTree(S,sigma,T,N)
-    option_tree = valueOptionMatrix(stock_tree, T, r, K, sigma)
+    stock_tree = binomial_tree.build_stock_tree()
+    option_tree = binomial_tree.build_option_tree()
+    black_scholes_value = binomial_tree.black_scholes_formula()
+    delta = binomial_tree.calc_delta()
 
-    black_scholes_value = black_scholes_formula(S, sigma, T, r, K)
-
-    delta = calc_delta(stock_tree, option_tree)
-
-    print(f"sigma = {sigma:.2f}: {option_tree[0][0]}, {delta} vs {black_scholes_value}")
+    print(f"sigma = {sigma:.2f}: {option_tree[0][0]:>9.6f} vs {black_scholes_value[0]:>9.6f}      |     {delta:>8.6f} vs {black_scholes_value[1]:>8.6f}")
