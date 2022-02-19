@@ -79,19 +79,3 @@ class BinomialTree:
         s0 = self.stock_tree[0][0]
 
         return (fu - fd) / (s0 * self.u - s0 * self.d)
-
-print("                   Tree vs Black-Scholes  |         Tree vs Black-Scholes")
-for sigma in np.arange(0.1, 1.1, .1):
-    binomial_tree = BinomialTree(S   = 100, 
-                                 vol = sigma, 
-                                 T   = 1, 
-                                 N   = 50, 
-                                 r   = 0.06, 
-                                 K   = 99)
-
-    stock_tree = binomial_tree.build_stock_tree()
-    option_tree = binomial_tree.build_option_tree()
-    black_scholes_value = binomial_tree.black_scholes_formula()
-    delta = binomial_tree.calc_delta()
-
-    print(f"sigma = {sigma:.2f}: {option_tree[0][0]:>9.6f} vs {black_scholes_value[0]:>9.6f}      |     {delta:>8.6f} vs {black_scholes_value[1]:>8.6f}")
