@@ -12,4 +12,5 @@ def asian_option_value(T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
 
     return np.exp(-r * T) * (S * np.exp(r_flubber * T) * norm.cdf(d1_flubber) - K * norm.cdf(d2_flubber))
 
-print(asian_option_value())
+if __name__ == "__main__":
+    print(asian_option_value())
