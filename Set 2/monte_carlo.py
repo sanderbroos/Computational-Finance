@@ -27,6 +27,8 @@ class MonteCarloStock():
             return max(self.K - self.calc_stock_price(), 0)
         elif self.option_type == "call":
             return max(self.calc_stock_price() - self.K, 0)
+        elif self.option_type == "digital":
+            return 1 if self.calc_stock_price() > self.K else 0
         else:
             raise Exception(f"Error: invalid option type {self.option_type}")
 
@@ -72,7 +74,7 @@ class MonteCarloStockManager():
 
 def main():
 
-    manager = MonteCarloStockManager(1000000, option_type="call")
+    manager = MonteCarloStockManager(1000000, option_type="digital")
 
     print(manager.calc_hedge_parameter(epsilon=0.01, fixed_seed=True))
 
