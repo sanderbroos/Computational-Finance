@@ -37,7 +37,7 @@ class BinomialTree:
         if self.pricing_type == "eu":
             return math.exp(-self.r * self.dt) * (self.p * up + (1 - self.p) * down)
         else:
-            return max(math.exp(-self.r * self.dt) * (self.p * up + (1 - self.p) * down), self.payoff(i, j))
+            return max(math.exp(-self.r * self.dt) * (self.p * up + (1 - self.p) * down), 0)
 
     def build_stock_tree(self):
         # iterate over the lower triangle
