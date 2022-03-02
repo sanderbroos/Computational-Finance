@@ -34,7 +34,7 @@ class MonteCarloStockManager():
     """
     Manages a M distinct stocks.
     """
-    
+
     def __init__(self, M, T=1, K=99, r=0.06, S=100, vol=0.2, option_type="put", pricing_type="eu"):
         
         self.M = M
@@ -46,22 +46,35 @@ class MonteCarloStockManager():
         self.option_type = option_type
         self.pricing_type = pricing_type
 
-    def calc_option_price(self):
+    def calc_option_price(self, epsilon=0):
 
         payoffs = []
         for i in range(self.M):
-            stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type=self.option_type, pricing_type=self.pricing_type)
+            stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0 + epsilon, vol=self.vol, option_type=self.option_type, pricing_type=self.pricing_type)
 
             payoffs.append(stock.calc_payoff())
 
         return np.exp(-self.r * self.T) * np.mean(payoffs)
 
+    def calc_hedge_parameter(self, epsilon, fixed_seed=True):
+
+        st0 = np.random.get_state()
+
+        bumped_option_price = self.calc_option_price(epsilon=epsilon)
+        
+        if fixed_seed:
+            np.random.set_state(st0)
+
+        unbumped_option_price = self.calc_option_price()
+
+        return (bumped_option_price - unbumped_option_price) / epsilon
+
+
 def main():
 
-    manager = MonteCarloStockManager(1000000, option_type="put")
+    manager = MonteCarloStockManager(1000000, option_type="call")
 
-    print(manager.calc_option_price())  
-
+    print(manager.calc_hedge_parameter(epsilon=0.01, fixed_seed=True))
 
 if __name__ == "__main__":
     main()
