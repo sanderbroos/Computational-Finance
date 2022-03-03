@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import gmean
 
 from analytic import asian_option_value
+from simulation_manager import SimulationManager
 
 class MonteCarloStock():
     """
@@ -18,24 +19,38 @@ class MonteCarloStock():
         self.vol = vol
         self.option_type = option_type
 
-    def calc_stock_price(self, tau=None):
+    def run(self):
+        pass
+
+    def calc_stock_price(self, tau=None, Z=None):
 
         if not tau:
             tau = self.T
 
-        # Equation 2
-        return self.S * np.exp((self.r - 0.5 * self.vol ** 2) * tau + self.vol * np.sqrt(tau) * np.random.normal(0, 1))
+        if not Z:
+            Z = np.random.normal(0, 1)
 
-    def calc_payoff(self):
+        # Equation 2
+        return self.S * np.exp((self.r - 0.5 * self.vol ** 2) * tau + self.vol * np.sqrt(tau) * Z)
+
+    def calc_payoff(self, **kwargs):
 
         if self.option_type == "put":
             return max(self.K - self.calc_stock_price(), 0)
         elif self.option_type == "call":
             return max(self.calc_stock_price() - self.K, 0)
         elif self.option_type == "digital":
-            return 1 if self.calc_stock_price() > self.K else 0
+            return 1 if self.calc_stock_price(**kwargs) > self.K else 0
         else:
             raise Exception(f"Error: invalid option type {self.option_type}")
+
+    def calc_likelihood_delta(self):
+
+        factor = np.exp(- self.r * self.T)
+        Z = np.random.normal(0, 1)
+        payoff = self.calc_payoff(Z=Z)
+
+        return factor * payoff * Z / (self.vol * self.S0 * np.sqrt(self.T))
 
 class AsianMonteCarloStock(MonteCarloStock):
 
@@ -131,22 +146,37 @@ def control_variate_technique_asian(beta, M, T=1, K=99, r=0.06, S=100, vol=0.2, 
 
     return MC_ari_mean - beta * (MC_geo_mean - analytic), MC_ari_mean
 
+def likelihood_ratio():
+
+    n = 1000000
+    sim_manager = SimulationManager(MonteCarloStock, n, option_type="digital") 
+    mean, std = sim_manager.calc_attribute(lambda sim: sim.calc_likelihood_delta())
+
+    print(mean, std)
+
+    manager = MonteCarloStockManager(n)
+    mean_bump, std_bump = manager.calc_hedge_parameter(0.1)
+
+    print(mean_bump, std_bump)
+
+
 def main():
 
     # manager = MonteCarloStockManager(100000, option_type="asian")
 
     # print(manager.calc_option_price())
 
-    values, aris = [], []
-    for i in range(10):
+    # values, aris = [], []
+    # for i in range(10):
 
-        value, ari = control_variate_technique_asian(0.5, 10000)
+    #     value, ari = control_variate_technique_asian(0.5, 10000)
 
-        values.append(value)
-        aris.append(ari)
+    #     values.append(value)
+    #     aris.append(ari)
 
-    print(np.mean(values), np.std(values), np.mean(aris), np.std(aris))
+    # print(np.mean(values), np.std(values), np.mean(aris), np.std(aris))
 
+    likelihood_ratio()
     
 if __name__ == "__main__":
     main()
