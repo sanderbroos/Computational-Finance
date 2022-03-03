@@ -93,20 +93,23 @@ class MonteCarloStockManager():
 
             payoffs.append(stock.calc_payoff())
 
-        return np.exp(-self.r * self.T) * np.mean(payoffs)
+        payoffs = np.array(payoffs)
+        factor = np.exp(-self.r * self.T)
+
+        return factor * payoffs, factor * np.mean(payoffs), factor * np.std(payoffs)
 
     def calc_hedge_parameter(self, epsilon, fixed_seed=True):
 
         st0 = np.random.get_state()
 
-        bumped_option_price = self.calc_option_price(epsilon=epsilon)
+        _, bumped_option_price, bumped_option_std = self.calc_option_price(epsilon=epsilon)
         
         if fixed_seed:
             np.random.set_state(st0)
 
-        unbumped_option_price = self.calc_option_price()
+        _, unbumped_option_price, unbumped_option_std = self.calc_option_price()
 
-        return (bumped_option_price - unbumped_option_price) / epsilon
+        return (bumped_option_price - unbumped_option_price) / epsilon, (bumped_option_std + unbumped_option_std) / epsilon
 
 
 
@@ -114,10 +117,19 @@ def control_variate_technique_asian(beta, M, T=1, K=99, r=0.06, S=100, vol=0.2, 
 
     analytic = asian_option_value(T=T, K=K, r=r, S=S, vol=vol, N=N)
 
-    MC_geo = MonteCarloStockManager(M, T=T, K=K, r=r, S=S, vol=vol, N=N, option_type="asian", mean_type="geometric").calc_option_price()
-    MC_ari = MonteCarloStockManager(M, T=T, K=K, r=r, S=S, vol=vol, N=N, option_type="asian", mean_type="arithmetic").calc_option_price()
+    st0 = np.random.get_state()
 
-    return MC_ari - beta * (MC_geo - analytic)
+    MC_geo_payoffs, MC_geo_mean, MC_geo_std = MonteCarloStockManager(M, T=T, K=K, r=r, S=S, vol=vol, N=N, option_type="asian", mean_type="geometric").calc_option_price()
+    
+    np.random.set_state(st0)
+
+    MC_ari_payoffs, MC_ari_mean, MC_ari_std = MonteCarloStockManager(M, T=T, K=K, r=r, S=S, vol=vol, N=N, option_type="asian", mean_type="arithmetic").calc_option_price()
+
+    # Calculate optimal beta, rho is the correlation
+    rho = np.cov(MC_ari_payoffs, MC_geo_payoffs) / (MC_geo_std * MC_ari_std)
+    beta = (MC_ari_std / MC_geo_std) * rho
+
+    return MC_ari_mean - beta * (MC_geo_mean - analytic), MC_ari_mean
 
 def main():
 
@@ -125,8 +137,17 @@ def main():
 
     # print(manager.calc_option_price())
 
-    print(control_variate_technique_asian(0.5, 100000))
+    values, aris = [], []
+    for i in range(10):
 
+        value, ari = control_variate_technique_asian(0.5, 10000)
+
+        values.append(value)
+        aris.append(ari)
+
+    print(np.mean(values), np.std(values), np.mean(aris), np.std(aris))
+
+    
 if __name__ == "__main__":
     main()
 
