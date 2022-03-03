@@ -42,7 +42,7 @@ class AsianMonteCarloStock(MonteCarloStock):
 
     def __init__(self, T=1, K=99, r=0.06, S=100, vol=0.2, option_type="put", N=100, mean_type="geometric"):
 
-        super().__init__(T=1, K=99, r=0.06, S=100, vol=0.2, option_type="put")
+        super().__init__(T=T, K=K, r=r, S=S, vol=vol, option_type=option_type)
         self.N = N
         self.mean_type = mean_type
 
