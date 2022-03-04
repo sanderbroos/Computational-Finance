@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import gmean
+from scipy.stats import norm
 
 from analytic import asian_option_value
 from simulation_manager import SimulationManager
@@ -126,6 +127,22 @@ class MonteCarloStockManager():
 
         return (bumped_option_price - unbumped_option_price) / epsilon, (bumped_option_std + unbumped_option_std) / epsilon
 
+    def calc_pathwise_digital_delta(self, smoothing_scale, epsilon):
+        results = []
+
+        for _ in range(self.M):
+            st0 = np.random.get_state()
+            bumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0 + epsilon, vol=self.vol, option_type="digital")
+            ST_bumped = bumped_stock.calc_stock_price()
+
+            np.random.set_state(st0)
+            unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="digital")
+            ST_unbumped = unbumped_stock.calc_stock_price()
+
+            results.append(norm.pdf(ST_unbumped, self.K, smoothing_scale) * (ST_bumped - ST_unbumped) / epsilon)
+
+        return np.mean(results)
+
 
 
 def control_variate_technique_asian(beta, M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
@@ -162,7 +179,8 @@ def likelihood_ratio():
 
 def main():
 
-    # manager = MonteCarloStockManager(100000, option_type="asian")
+    manager = MonteCarloStockManager(50000, option_type="asian")
+    print(manager.calc_pathwise_digital_delta(1, 0.01))
 
     # print(manager.calc_option_price())
 
@@ -176,7 +194,7 @@ def main():
 
     # print(np.mean(values), np.std(values), np.mean(aris), np.std(aris))
 
-    likelihood_ratio()
+    # likelihood_ratio()
     
 if __name__ == "__main__":
     main()
