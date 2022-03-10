@@ -97,6 +97,9 @@ class MonteCarloStockManager():
         self.N = N
         self.mean_type = mean_type
 
+    def __str__(self):
+        return f"Manager: M={self.M}"
+        
     def calc_option_price(self, epsilon=0):
 
         payoffs = []
@@ -145,7 +148,7 @@ class MonteCarloStockManager():
 
 
 
-def control_variate_technique_asian(beta, M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
+def control_variate_technique_asian(M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
 
     analytic = asian_option_value(T=T, K=K, r=r, S=S, vol=vol, N=N)
 
@@ -176,6 +179,23 @@ def likelihood_ratio():
 
     print(mean_bump, std_bump)
 
+def obtain_mean_and_stds_control_variate(n_instances, M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
+
+    control_variate_values, MC_ari_values = [], []
+    for i in range(n_instances):
+
+        control_variate, MC_ari = control_variate_technique_asian(M, T=T, K=K, r=r, S=S, vol=vol, N=N)
+
+        control_variate_values.append(control_variate)
+        MC_ari_values.append(MC_ari)
+
+    control_variate_mean = np.mean(control_variate_values)
+    control_variate_std = np.std(control_variate_values)
+
+    MC_ari_mean = np.mean(MC_ari_values)
+    MC_ari_std = np.std(MC_ari_values)
+
+    return control_variate_mean, control_variate_std, MC_ari_mean, MC_ari_std
 
 def main():
 
