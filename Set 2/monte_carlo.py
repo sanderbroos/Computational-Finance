@@ -146,6 +146,18 @@ class MonteCarloStockManager():
 
         return np.mean(results)
 
+    def calc_likelihood_digital_delta(self):
+        deltas = []
+        for i in range(self.M):
+
+            stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="digital")
+
+            deltas.append(stock.calc_likelihood_delta())
+
+        deltas = np.array(deltas)
+
+        return np.mean(deltas)
+
 
 
 def control_variate_technique_asian(M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
@@ -165,19 +177,6 @@ def control_variate_technique_asian(M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100)
     beta = (MC_ari_std / MC_geo_std) * rho
 
     return MC_ari_mean - beta * (MC_geo_mean - analytic), MC_ari_mean
-
-def likelihood_ratio():
-
-    n = 1000000
-    sim_manager = SimulationManager(MonteCarloStock, n, option_type="digital") 
-    mean, std = sim_manager.calc_attribute(lambda sim: sim.calc_likelihood_delta())
-
-    print(mean, std)
-
-    manager = MonteCarloStockManager(n)
-    mean_bump, std_bump = manager.calc_hedge_parameter(0.1)
-
-    print(mean_bump, std_bump)
 
 def obtain_mean_and_stds_control_variate(n_instances, M, T=1, K=99, r=0.06, S=100, vol=0.2, N=100):
 
