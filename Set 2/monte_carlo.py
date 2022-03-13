@@ -34,7 +34,7 @@ class MonteCarloStock():
         # Equation 2
         return self.S * np.exp((self.r - 0.5 * self.vol ** 2) * tau + self.vol * np.sqrt(tau) * Z)
 
-    def calc_payoff(self, **kwargs):
+    def calc_payoff(self, smoothing_scale=None, **kwargs):
 
         if self.option_type == "put":
             return max(self.K - self.calc_stock_price(), 0)
@@ -42,6 +42,8 @@ class MonteCarloStock():
             return max(self.calc_stock_price() - self.K, 0)
         elif self.option_type == "digital":
             return 1 if self.calc_stock_price(**kwargs) > self.K else 0
+        elif self.option_type == "smoothed_digital":
+            return norm.cdf(self.calc_stock_price(), self.K, smoothing_scale)
         else:
             raise Exception(f"Error: invalid option type {self.option_type}")
 
@@ -135,16 +137,18 @@ class MonteCarloStockManager():
 
         for _ in range(self.M):
             st0 = np.random.get_state()
-            bumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0 + epsilon, vol=self.vol, option_type="digital")
-            ST_bumped = bumped_stock.calc_stock_price()
+            bumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0 + epsilon, vol=self.vol, option_type="smoothed_digital")
+            # ST_bumped = bumped_stock.calc_stock_price()
+            payoff_bumped = bumped_stock.calc_payoff(smoothing_scale=smoothing_scale)
 
             np.random.set_state(st0)
-            unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="digital")
-            ST_unbumped = unbumped_stock.calc_stock_price()
+            unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="smoothed_digital")
+            # ST_unbumped = unbumped_stock.calc_stock_price()
+            payoff_unbumped = unbumped_stock.calc_payoff(smoothing_scale=smoothing_scale)
 
-            results.append(norm.pdf(ST_unbumped, self.K, smoothing_scale) * (ST_bumped - ST_unbumped) / epsilon)
+            results.append((payoff_bumped - payoff_unbumped) / epsilon)
 
-        return np.mean(results)
+        return np.exp(-self.r * self.T) * np.mean(results)
 
     def calc_likelihood_digital_delta(self):
         deltas = []
