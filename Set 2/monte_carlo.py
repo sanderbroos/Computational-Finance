@@ -132,23 +132,16 @@ class MonteCarloStockManager():
 
         return (bumped_option_price - unbumped_option_price) / epsilon, (bumped_option_std + unbumped_option_std) / epsilon
 
-    def calc_pathwise_digital_delta(self, smoothing_scale, epsilon):
+    def calc_pathwise_digital_delta(self, smoothing_scale):
         results = []
 
         for _ in range(self.M):
-            st0 = np.random.get_state()
-            bumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0 + epsilon, vol=self.vol, option_type="smoothed_digital")
-            # ST_bumped = bumped_stock.calc_stock_price()
-            payoff_bumped = bumped_stock.calc_payoff(smoothing_scale=smoothing_scale)
+            unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="digital")
+            ST_unbumped = unbumped_stock.calc_stock_price()
 
-            np.random.set_state(st0)
-            unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="smoothed_digital")
-            # ST_unbumped = unbumped_stock.calc_stock_price()
-            payoff_unbumped = unbumped_stock.calc_payoff(smoothing_scale=smoothing_scale)
+            results.append(np.exp(-self.r * self.T) * norm.pdf(ST_unbumped, self.K, smoothing_scale) * ST_unbumped / self.S0)
 
-            results.append((payoff_bumped - payoff_unbumped) / epsilon)
-
-        return np.exp(-self.r * self.T) * np.mean(results)
+        return np.mean(results)
 
     def calc_likelihood_digital_delta(self):
         deltas = []
