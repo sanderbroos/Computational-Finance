@@ -139,7 +139,7 @@ class MonteCarloStockManager():
             unbumped_stock = MonteCarloStock(T=self.T, K=self.K, r=self.r, S=self.S0, vol=self.vol, option_type="digital")
             ST_unbumped = unbumped_stock.calc_stock_price()
 
-            results.append(np.exp(-self.r * self.T) * norm.pdf(ST_unbumped, self.K, smoothing_scale) * ST_unbumped / self.S0)
+            results.append(np.exp(-self.r * self.T) * (1 / (np.sqrt(2 * np.pi) * abs(smoothing_scale))) * np.exp(-((ST_unbumped - self.K) / abs(smoothing_scale))**2 / 2) * ST_unbumped / self.S0)
 
         return np.mean(results)
 
