@@ -2,7 +2,7 @@ import numpy as np
 
 class FiniteDiff():
 
-    def __init__(self,  T=1, K=110, r=0.04, S=100, vol=0.3,  Nt = 100, NX = 100, S_max = None):
+    def __init__(self,  T=1, K=110, r=0.04, S=100, vol=0.3,  Nt = 100, NX = 100, S_max = None, propagate_scheme="FTCS"):
         
         if S_max is None:
             S_max = 10**5 * S
@@ -25,11 +25,20 @@ class FiniteDiff():
         self.payoff_grid = np.zeros((Nt, NX))
 
         self.initialize_payoff_grid()
-
+        
         self.k = np.zeros(self.NX)
-        self.k[-1] = S_max
 
-        self.propagate_matrix = self.calc_propagate_matrix()
+        if propagate_scheme == "FTCS":
+            self.k[-1] = S_max # NOTE very little influence
+            self.propagate_matrix = self.calc_propagate_matrix_FCTS()
+
+        elif propagate_scheme == "CN":
+            # self.k[-1] = S_max # NOTE very little influence
+            self.propagate_matrix = self.calc_propagate_matrix_CN()
+
+        else:
+            raise Exception(f"ERROR: invalid propagate scheme {propagate_scheme}")
+        
         self.propagate_field()
 
     def initialize_payoff_grid(self):
@@ -38,7 +47,7 @@ class FiniteDiff():
         for i, X in enumerate(self.X_values):      
             self.payoff_grid[0][i] = self.calc_payoff(self.X_to_S(X), self.K)
             
-    def calc_propagate_matrix(self):
+    def calc_propagate_matrix_FCTS(self):
 
         alpha = (self.r - 0.5 * self.vol ** 2) * self.dt / (2 * self.dX)
         beta = self.vol ** 2 * self.dt / self.dX ** 2
@@ -56,6 +65,34 @@ class FiniteDiff():
                 
         return propagate_matrix
 
+    def calc_propagate_matrix_CN(self):
+
+        alpha = (self.r - 0.5 * self.vol ** 2) * self.dt / (4 * self.dX)
+        beta = self.vol ** 2 * self.dt / self.dX ** 2
+
+        a_negative_1 = -alpha + 0.25 * beta
+        a_zero = 1 - 0.5 * beta - 0.5 * self.r * self.dt 
+        a_positive_1 = alpha + 0.25 * beta
+
+        b_negative_1 = alpha - 0.25 * beta
+        b_zero = 1 + 0.5 * beta + 0.5 * self.r * self.dt
+        b_positive_1 = -alpha - 0.25 * beta
+
+        A = np.zeros((self.NX, self.NX))
+        B = np.zeros((self.NX, self.NX))
+
+        for i in range(1, self.NX - 1):
+
+            A[i][i - 1] = a_negative_1
+            A[i][i] = a_zero
+            A[i][i + 1] = a_positive_1
+
+            B[i][i - 1] = b_negative_1
+            B[i][i] = b_zero
+            B[i][i + 1] = b_positive_1
+
+        # B is singular, therefore we take the pseudo inverse
+        return np.matmul(np.linalg.pinv(B), A)
 
     def propagate_field(self):
 
@@ -94,7 +131,7 @@ def main():
     
     # Nt and NX have to be of the same order of magnitude, otherwise the finite
     # difference equation is not stable
-    field = FiniteDiff(Nt=2000, NX=2000)
+    field = FiniteDiff(Nt=1000, NX=1000, propagate_scheme="FTCS")
 
     print(field.get_payoff_for_S(100)) # BS expectation: 9.62536
     print(field.get_payoff_for_S(110)) # BS expectation: 15.12859
