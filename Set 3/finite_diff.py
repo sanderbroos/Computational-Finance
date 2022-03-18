@@ -1,11 +1,13 @@
+import math
 import numpy as np
+from scipy.stats import norm
 
 class FiniteDiff():
 
-    def __init__(self,  T=1, K=110, r=0.04, S=100, vol=0.3,  Nt = 100, NX = 100, S_max = None, propagate_scheme="FTCS"):
+    def __init__(self, T=1, K=110, r=0.04, vol=0.3,  Nt = 100, NX = 100, S_max = None, propagate_scheme="FTCS"):
         
         if S_max is None:
-            S_max = 10**5 * S
+            S_max = 10**5 * K
 
         self.T = T
         self.K = K
@@ -126,16 +128,23 @@ class FiniteDiff():
         
         return payoff
 
+def black_scholes_formula(T=1, S=100, K=110, r=0.04, vol=0.3):
+    """ Returns the exact payoff price and hedge parameter for an European call option. """  
+    
+    d1 = (math.log(S / K) + (r + 0.5 * math.pow(vol, 2)) * T) / (vol * math.sqrt(T))
+    d2 = d1 - vol * math.sqrt(T)
+
+    return S * norm.cdf(d1) - math.exp(-r * T) * K * norm.cdf(d2), norm.cdf(d1)
 
 def main():
     
     # Nt and NX have to be of the same order of magnitude, otherwise the finite
     # difference equation is not stable
-    field = FiniteDiff(Nt=1000, NX=1000, propagate_scheme="FTCS")
+    field = FiniteDiff(Nt=1000, NX=1000, propagate_scheme="CN")
 
-    print(field.get_payoff_for_S(100)) # BS expectation: 9.62536
-    print(field.get_payoff_for_S(110)) # BS expectation: 15.12859
-    print(field.get_payoff_for_S(120)) # BS expectation: 21.78881
+    print(f"FD: {field.get_payoff_for_S(100)}, BS: {black_scholes_formula(S=100)[0]}")
+    print(f"FD: {field.get_payoff_for_S(110)}, BS: {black_scholes_formula(S=110)[0]}")
+    print(f"FD: {field.get_payoff_for_S(120)}, BS: {black_scholes_formula(S=120)[0]}")
 
 
 if __name__ == "__main__":
