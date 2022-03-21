@@ -110,23 +110,43 @@ class FiniteDiff():
     def X_to_S(self, X):
         return np.exp(X)
 
-    def get_payoff_for_S(self, S):
+    def find_X_index(self, X):
+        """
+        Returns the index i for which holds X_values[i] < X < X_values[i + 1]
+        """
 
-        # Find index of X in the X_values
-        X = self.S_to_X(S)
         for i in range(len(self.X_values) - 1):
             if self.X_values[i] <= X < self.X_values[i + 1]:
-                X_index = i
-                break
+                return i
+
+        raise Exception(f"ERROR: X={X} outside of bounds {self.X_values[0]} to {self.X_values[-1]}")
+
+
+    def get_payoff_for_S(self, S):
+
+        X = self.S_to_X(S)
+        X_index = self.find_X_index(X)
                 
         # Interpolate between X values
-        temp = (X - self.X_values[X_index]) / (self.X_values[i + 1] - self.X_values[i])
+        temp = (X - self.X_values[X_index]) / (self.X_values[X_index + 1] - self.X_values[X_index])
         payoff = self.payoff_grid[-1][X_index] + temp * (self.payoff_grid[-1][X_index + 1] - self.payoff_grid[-1][X_index])
 
         # Without interpolation
         # payoff = self.payoff_grid[-1][X_index]
         
         return payoff
+
+    def calc_delta(self, S):
+        
+        X = self.S_to_X(S)
+        X_index = self.find_X_index(X)
+
+        X_min, X_max = self.X_values[X_index], self.X_values[X_index + 1]
+        V_min, V_max = self.payoff_grid[-1][X_index], self.payoff_grid[-1][X_index + 1]
+
+        S_min, S_max = self.X_to_S(X_min), self.X_to_S(X_max)
+
+        return (V_max - V_min) / (S_max - S_min)
 
 def black_scholes_formula(T=1, S=100, K=110, r=0.04, vol=0.3):
     """ Returns the exact payoff price and hedge parameter for an European call option. """  
@@ -142,10 +162,15 @@ def main():
     # difference equation is not stable
     field = FiniteDiff(Nt=1000, NX=1000, propagate_scheme="CN")
 
+    print("PAYOFF")
     print(f"FD: {field.get_payoff_for_S(100)}, BS: {black_scholes_formula(S=100)[0]}")
     print(f"FD: {field.get_payoff_for_S(110)}, BS: {black_scholes_formula(S=110)[0]}")
     print(f"FD: {field.get_payoff_for_S(120)}, BS: {black_scholes_formula(S=120)[0]}")
 
+    print("\nDELTA")
+    print(f"FD: {field.calc_delta(100)}, BS: {black_scholes_formula(S=100)[1]}")
+    print(f"FD: {field.calc_delta(110)}, BS: {black_scholes_formula(S=110)[1]}")
+    print(f"FD: {field.calc_delta(120)}, BS: {black_scholes_formula(S=120)[1]}")
 
 if __name__ == "__main__":
     main()
