@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 
 class COS_euro_call:
     def __init__(self, S0, K, r, T, vol):
@@ -29,19 +30,33 @@ class COS_euro_call:
         return (np.sin(k * np.pi * (d - self.a)/(self.b - self.a)) - np.sin(k * np.pi * (c - self.a)/(self.b - self.a))) * (self.b - self.a)/(k*np.pi)
 
     def F(self, k, t):
+        # TODO why x-a in the exponent instead of -a?
         return 2/(self.b - self.a) * (self.phi((k * np.pi)/(self.b - self.a), t) * np.exp(1j * ((k * (self.x - self.a) * np.pi)/(self.b - self.a)))).real
 
     def G(self, k):
         return 2/(self.b - self.a) * self.K * (self.chi(k, 0, self.b) - self.psi(k, 0, self.b))
 
-    def V(self, t, N):
+    def V(self, N, t=None):
+        if t == None:
+            t = self.T
+
         fourier_sum = 0.5 * self.F(0, t) * self.G(0)
 
+        # go *up to* N
         for k in range(1, N + 1):
             fourier_sum += self.F(k, t) * self.G(k)
 
         return np.exp(-self.r*t) * (self.b - self.a)/2 * fourier_sum
 
+    def black_scholes(self, t=None):
+        if t == None:
+            t = self.T
+            
+        d1 = (np.log(self.S0 / self.K) + (self.r + 0.5 * self.vol**2) * t) / (self.vol * np.sqrt(t))
+        d2 = d1 - self.vol * np.sqrt(t)
+
+        return self.S0 * norm.cdf(d1) - np.exp(-self.r * t) * self.K * norm.cdf(d2)
+
 if __name__ == "__main__":
     cos = COS_euro_call(100, 99, 0.06, 1, 0.2)
-    print(cos.V(cos.T, 64))
+    print(cos.V(64), cos.black_scholes())
