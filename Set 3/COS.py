@@ -58,5 +58,9 @@ class COS_euro_call:
         return self.S0 * norm.cdf(d1) - np.exp(-self.r * t) * self.K * norm.cdf(d2)
 
 if __name__ == "__main__":
-    cos = COS_euro_call(100, 99, 0.06, 1, 0.2)
-    print(cos.V(64), cos.black_scholes())
+    cos1 = COS_euro_call(S0=120, K=110, r=0.04, T=1, vol=0.3)
+    cos2 = COS_euro_call(S0=110, K=110, r=0.04, T=1, vol=0.3)
+    cos3 = COS_euro_call(S0=100, K=110, r=0.04, T=1, vol=0.3)
+    print(cos1.V(64), cos1.black_scholes())
+    print(cos2.V(64), cos2.black_scholes())
+    print(cos3.V(64), cos3.black_scholes())
